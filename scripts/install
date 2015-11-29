@@ -1,0 +1,57 @@
+#!/bin/zsh -f
+
+source ./_common.sh
+
+# Retrieve arguments
+domain=$1
+path=$2
+is_public=$3
+
+sudo yunohost app setting drupal is_public -v $is_public
+
+# Check domain/path availability
+sudo yunohost app checkurl $domain$path -a drupal
+if [[ ! $? -eq 0 ]]; then
+    exit 1
+fi
+
+# Generate random password
+db_pwd=$(dd if=/dev/urandom bs=1 count=200 2> /dev/null | tr -c -d '[A-Za-z0-9]' | sed -n 's/\(.\{24\}\).*/\1/p')
+
+# Use 'drupal' as database name and user
+db_user=drupal
+
+# Initialize database and store mysql password for upgrade
+sudo yunohost app initdb $db_user -p $db_pwd
+sudo yunohost app setting drupal mysqlpwd -v $db_pwd
+
+wget -nv -O drupal-${VERSION}.tar.gz https://ftp.drupal.org/files/projects/drupal-${VERSION}.tar.gz
+
+
+# Copy files to the right place
+final_path=/var/www/drupal
+sudo mkdir -p $final_path
+sudo tar -C $final_path -xf drupal-${VERSION}.tar.gz --strip-components 1
+sudo cp ../conf/settings.php $final_path/sites/default/settings.php
+sudo cp ../conf/services.yml $final_path/sites/default/services.yml
+
+# Change variables in drupal configuration
+sudo sed -i "s/drupalpassword/$db_pwd/g" $final_path/sites/default/settings.php
+sudo sed -i "s/drupalusername/$db_user/g" $final_path/sites/default/settings.php
+sudo sed -i "s/drupaldatabase/drupal/g" $final_path/sites/default/settings.php
+sudo chmod -R 777 $final_path/sites/default/files
+
+# Set permissions to drupal directory
+sudo chown -R www-data: $final_path
+
+# Modify Nginx configuration file and copy it to Nginx conf directory
+sed -i "s@PATHTOCHANGE@$path@g" ../conf/nginx.conf*
+sed -i "s@ALIASTOCHANGE@$final_path/@g" ../conf/nginx.conf*
+sudo cp ../conf/nginx.conf /etc/nginx/conf.d/$domain.d/drupal.conf
+
+# Reload Nginx and regenerate SSOwat conf
+sudo service nginx reload
+sudo yunohost app setting drupal skipped_uris -v "/"
+sudo yunohost app ssowatconf
+
+#user is currently setup by visiting web interface

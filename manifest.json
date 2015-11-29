@@ -1,0 +1,42 @@
+{
+    "name": "Drupal",
+    "id": "drupal",
+    "description": {
+        "en": "Drupal is content management software."
+    },
+    "url": "http://drupal.org/",
+    "maintainer": {
+        "name": "realitygaps",
+        "email": "realitygaps@gapsinreality.com"
+    },
+    "multi_instance": "false",
+    "arguments": {
+        "install" : [
+            {
+                "name": "domain",
+                "type": "domain",
+                "ask": {
+                    "en": "Choose a domain for Drupal"
+                },
+                "example": "domain.org"
+            },
+            {
+                "name": "path",
+                "type": "path",
+                "ask": {
+                    "en": "Choose a path for Drupal"
+                },
+                "example": "/drupal",
+                "default": "/drupal"
+            },
+            {
+                "name": "public_site",
+                "ask": {
+                    "en": "Is it a public Drupal site?"
+                },
+                "choices": ["Yes", "No"],
+                "default": "Yes"
+            }
+        ]
+    }
+}
